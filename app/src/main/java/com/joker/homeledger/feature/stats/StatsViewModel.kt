@@ -3,10 +3,12 @@ package com.joker.homeledger.feature.stats
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.joker.homeledger.core.common.StatsPeriodFilter
+import com.joker.homeledger.core.common.toLedgerFilter
 import com.joker.homeledger.core.data.repository.TransactionRepository
 import com.joker.homeledger.core.model.CategoryExpenseItem
 import com.joker.homeledger.core.model.Summary
 import com.joker.homeledger.core.model.TrendPoint
+import com.joker.homeledger.core.navigation.LedgerFilterCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -25,7 +27,8 @@ data class StatsUiState(
 
 @HiltViewModel
 class StatsViewModel @Inject constructor(
-    private val transactionRepository: TransactionRepository
+    private val transactionRepository: TransactionRepository,
+    private val ledgerFilterCoordinator: LedgerFilterCoordinator
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(StatsUiState())
     val uiState: StateFlow<StatsUiState> = _uiState.asStateFlow()
@@ -55,5 +58,9 @@ class StatsViewModel @Inject constructor(
                 )
             }
         }
+    }
+
+    fun prepareLedgerDrillDown(categoryId: Long) {
+        ledgerFilterCoordinator.setPending(_uiState.value.period.toLedgerFilter(categoryId))
     }
 }

@@ -102,6 +102,7 @@ class TransactionRepository @Inject constructor(
     suspend fun getCategoryExpenseRank(startAt: Long, endAt: Long): List<CategoryExpenseItem> {
         return transactionDao.loadExpenseByCategoryWithName(startAt, endAt).map {
             CategoryExpenseItem(
+                categoryId = it.categoryId,
                 categoryName = it.categoryName,
                 totalCent = it.totalCent
             )

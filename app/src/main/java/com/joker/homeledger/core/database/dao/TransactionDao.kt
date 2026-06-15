@@ -98,7 +98,7 @@ interface TransactionDao {
 
     @Query(
         """
-        SELECT c.name AS categoryName, SUM(t.amountCent) AS totalCent
+        SELECT t.categoryId AS categoryId, c.name AS categoryName, SUM(t.amountCent) AS totalCent
         FROM transaction_record t
         INNER JOIN category c ON t.categoryId = c.id
         WHERE t.type = 'EXPENSE' AND t.occurredAt BETWEEN :startAt AND :endAt

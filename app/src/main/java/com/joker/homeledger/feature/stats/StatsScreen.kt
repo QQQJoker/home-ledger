@@ -1,5 +1,6 @@
 package com.joker.homeledger.feature.stats
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import kotlin.math.max
 @Composable
 fun StatsScreen(
     onAddEntryClick: () -> Unit,
+    onNavigateToLedger: () -> Unit,
     viewModel: StatsViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -83,8 +85,15 @@ fun StatsScreen(
                     Text("暂无支出分类数据")
                 } else {
                     PieChart(slices = pieData, modifier = Modifier.fillMaxWidth().height(180.dp))
-                    pieData.forEach {
-                        Text("${it.label}: ¥${MoneyFormatter.centToYuan(it.valueCent)}")
+                    uiState.categoryRank.forEach { item ->
+                        Text(
+                            text = "${item.categoryName}: ¥${MoneyFormatter.centToYuan(item.totalCent)}",
+                            color = MaterialTheme.colorScheme.primary,
+                            modifier = Modifier.clickable {
+                                viewModel.prepareLedgerDrillDown(item.categoryId)
+                                onNavigateToLedger()
+                            }
+                        )
                     }
                 }
             }
@@ -139,7 +148,12 @@ private fun ChartCard(title: String, content: @Composable () -> Unit) {
     }
 }
 
-private data class PieSlice(val label: String, val valueCent: Long, val color: Color)
+private data class PieSlice(
+    val label: String,
+    val valueCent: Long,
+    val color: Color,
+    val categoryId: Long?
+)
 
 private fun buildPieSlices(items: List<CategoryExpenseItem>, topN: Int = 5): List<PieSlice> {
     if (items.isEmpty()) return emptyList()
@@ -151,10 +165,10 @@ private fun buildPieSlices(items: List<CategoryExpenseItem>, topN: Int = 5): Lis
     val top = sorted.take(topN)
     val other = sorted.drop(topN).sumOf { it.totalCent }
     val result = top.mapIndexed { index, item ->
-        PieSlice(item.categoryName, item.totalCent, colors[index % colors.size])
+        PieSlice(item.categoryName, item.totalCent, colors[index % colors.size], item.categoryId)
     }.toMutableList()
     if (other > 0L) {
-        result.add(PieSlice("其他", other, colors.last()))
+        result.add(PieSlice("其他", other, colors.last(), null))
     }
     return result
 }

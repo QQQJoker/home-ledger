@@ -89,11 +89,22 @@ fun LedgerScreen(
             ) {
                 uiState.sections.forEach { section ->
                     item(key = "header-${section.title}") {
-                        Text(
-                            text = section.title,
-                            style = MaterialTheme.typography.titleSmall,
-                            modifier = Modifier.padding(vertical = 4.dp)
-                        )
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(text = section.title, style = MaterialTheme.typography.titleSmall)
+                            if (section.dailyExpenseCent > 0L) {
+                                Text(
+                                    text = "支出 ¥${MoneyFormatter.centToYuan(section.dailyExpenseCent)}",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = Color(0xFFC62828)
+                                )
+                            }
+                        }
                     }
                     items(section.items, key = { it.transaction.id }) { item ->
                         TransactionRow(

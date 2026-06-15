@@ -1,6 +1,7 @@
 package com.joker.homeledger.core.model
 
 data class CategoryExpenseItem(
+    val categoryId: Long,
     val categoryName: String,
     val totalCent: Long
 )

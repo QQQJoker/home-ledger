@@ -165,7 +165,16 @@ private fun HomeLedgerAppRoot() {
                 )
             }
             composable(BottomTab.Stats.route) {
-                StatsScreen(onAddEntryClick = { navController.navigate(AppRoutes.entry()) })
+                StatsScreen(
+                    onAddEntryClick = { navController.navigate(AppRoutes.entry()) },
+                    onNavigateToLedger = {
+                        navController.navigate(BottomTab.Ledger.route) {
+                            popUpTo(navController.graph.findStartDestination().id) { saveState = true }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    }
+                )
             }
             composable(BottomTab.Settings.route) {
                 SettingsScreen(

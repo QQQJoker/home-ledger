@@ -13,8 +13,11 @@ import com.joker.homeledger.core.database.model.TransactionListItem
 import com.joker.homeledger.core.model.LedgerFilter
 import com.joker.homeledger.core.model.TransactionType
 import com.joker.homeledger.core.model.TypeFilter
+import com.joker.homeledger.core.navigation.LedgerFilterCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import javax.inject.Inject
+import java.time.Instant
+import java.time.ZoneId
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -22,9 +25,11 @@ import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
 data class LedgerSection(
     val title: String,
+    val dailyExpenseCent: Long,
     val items: List<TransactionListItem>
 )
 
@@ -40,11 +45,22 @@ data class LedgerUiState(
 @HiltViewModel
 class LedgerViewModel @Inject constructor(
     private val transactionRepository: TransactionRepository,
+    private val ledgerFilterCoordinator: LedgerFilterCoordinator,
     categoryRepository: CategoryRepository,
     accountRepository: AccountRepository
 ) : ViewModel() {
     private val filterState = MutableStateFlow(LedgerFilter())
     private val showFilterPanel = MutableStateFlow(false)
+
+    init {
+        viewModelScope.launch {
+            ledgerFilterCoordinator.pendingFilter.collect { pending ->
+                if (pending != null) {
+                    applyFilter(pending)
+                }
+            }
+        }
+    }
 
     private val categoriesFlow = combine(
         categoryRepository.observeAllByType(TransactionType.EXPENSE.name),
@@ -62,8 +78,22 @@ class LedgerViewModel @Inject constructor(
         categoriesFlow,
         accountRepository.observeAll()
     ) { filter, showPanel, transactions, (expenseCats, incomeCats), accounts ->
-        val grouped = transactions.groupBy { DateLabelUtils.dayGroupLabel(it.transaction.occurredAt) }
-            .map { (title, items) -> LedgerSection(title = title, items = items) }
+        val zone = ZoneId.systemDefault()
+        val grouped = transactions
+            .groupBy { Instant.ofEpochMilli(it.transaction.occurredAt).atZone(zone).toLocalDate() }
+            .entries
+            .sortedByDescending { it.key }
+            .map { (_, items) ->
+                val sortedItems = items.sortedByDescending { it.transaction.occurredAt }
+                val dailyExpenseCent = sortedItems
+                    .filter { it.transaction.type == TransactionType.EXPENSE.name }
+                    .sumOf { it.transaction.amountCent }
+                LedgerSection(
+                    title = DateLabelUtils.dayGroupLabel(sortedItems.first().transaction.occurredAt),
+                    dailyExpenseCent = dailyExpenseCent,
+                    items = sortedItems
+                )
+            }
         LedgerUiState(
             filter = filter,
             sections = grouped,
@@ -100,5 +130,11 @@ class LedgerViewModel @Inject constructor(
 
     fun clearFilters() {
         filterState.value = LedgerFilter()
+    }
+
+    fun applyFilter(filter: LedgerFilter, showPanel: Boolean = true) {
+        filterState.value = filter
+        showFilterPanel.value = showPanel
+        ledgerFilterCoordinator.clearPending()
     }
 }
